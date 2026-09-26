@@ -1,0 +1,4 @@
+# Install into a venv created with --system-site-packages (PyGObject and Tk come from the OS):
+#   sudo apt install python3-gi python3-tk
+numpy>=2.0
+pillow>=10.1

@@ -169,7 +169,27 @@ Mở bằng `./sudoku`, `make run`, hoặc thêm `-i` vào lệnh `-f` / `-g`.
    Nhấn phím bất kỳ để quay lại chỉnh sửa.
 4. Nhấn `q` để thoát. Terminal sẽ trở lại bình thường.
 
-## 7. Kiểm thử
+## 7. Tự động giải Sudoku trên màn hình
+
+Công cụ chụp màn hình, tìm bảng 9×9 (ví dụ đang mở trên Chrome), đọc các số, giải bằng `./sudoku`,
+rồi tự di chuyển chuột và gõ số vào các ô trống. Chạy được trên GNOME Wayland (và X11).
+
+```bash
+sudo apt install python3-gi python3-tk python3-venv
+make auto-setup   # tạo .venv và cài numpy, pillow
+make auto-scan    # chỉ chụp, nhận diện và in lời giải, không gõ gì
+make auto         # mở cửa sổ điều khiển
+```
+
+Cách dùng cửa sổ: mở đề trên Chrome sao cho thấy toàn bộ bảng, nhấn **Scan** và kiểm tra bảng xem trước,
+rồi nhấn **Fill**. Sau 3 giây chương trình bắt đầu gõ. Chỉ các ô trống mới được điền.
+
+- Dừng: nút **Stop**, phím **Esc** (khi cửa sổ đang được chọn), hoặc chạy `pkill -USR1 -f sudoku_auto`.
+  Có thể gán lệnh này cho một phím tắt trong GNOME Settings → Keyboard → Custom Shortcuts.
+- Cần quyền ghi `/dev/uinput`, chỉ hỗ trợ một màn hình, và bàn phím phải gõ được số ở hàng phím số mà không cần Shift.
+- Nếu đọc sai số hoặc đề không giải được, chương trình không gõ gì và báo lỗi.
+
+## 8. Kiểm thử
 
 ```bash
 make test
@@ -189,7 +209,9 @@ Script [tests/run_tests.sh](tests/run_tests.sh) kiểm tra các trường hợp 
 Một lời giải được tính là đúng khi mỗi hàng, cột và khối 3×3 có đủ các số 1–9, và mọi ô gợi ý
 của đề được giữ nguyên. Giao diện ncurses không kiểm thử tự động được, cần thử bằng tay.
 
-## 8. Cấu trúc dự án
+Phần tự động hóa: `make auto-test` (17 kiểm thử, gồm ảnh chụp thật từ websudoku và sudoku-online).
+
+## 9. Cấu trúc dự án
 
 ```text
 include/          header của các module
@@ -201,6 +223,9 @@ src/
   generator.c     sinh đề ngẫu nhiên có lời giải duy nhất
   ui.c            giao diện ncurses
 tests/            file đề mẫu và run_tests.sh
+automation/
+  sudoku_auto/    chụp màn hình, nhận diện bảng và số, chuột/bàn phím ảo, cửa sổ Tk
+  tests/          kiểm thử Python và ảnh mẫu
 makefile
 ```
 
