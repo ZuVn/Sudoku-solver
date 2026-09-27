@@ -30,7 +30,7 @@ make clean      # remove obj/ and ./sudoku
 make auto-setup # create .venv (system site packages) + pip install automation/requirements.txt
 make auto       # open the Tk window: Scan → Fill (types into the screen!)
 make auto-scan  # capture + detect + solve, print only (no typing)
-make auto-test  # Python unit tests (expects "Ran 17 tests ... OK")
+make auto-test  # Python unit tests (expects "Ran 18 tests ... OK")
 ```
 
 There is no dev server and no release build. The build is always `-Wall -Wextra -g`.
@@ -60,7 +60,7 @@ Exit codes: `0` ok, `1` bad input / duplicate digit / no solution, `2` unknown o
 - **Uniqueness** (`countSolutions(b, 2) == 1`): the generator uses this to decide whether a clue can be removed.
 - **Automation pipeline**: portal screenshot → locate the grid from its 4 thick box lines → classify each cell
   by template correlation (fonts rendered at runtime) → `./sudoku -f -` → click and type **only empty cells**
-  through uinput → optional re-scan to verify.
+  through uinput.
 
 Full details: [.claude/docs/solver_algorithm.md](.claude/docs/solver_algorithm.md),
 [.claude/docs/screen_automation.md](.claude/docs/screen_automation.md).
@@ -83,7 +83,8 @@ Never change these without being asked:
 8. **Keep ncurses in `ui.c` only.** `board`/`input`/`solver`/`generator` must stay headless so a future
    automation layer can reuse them. Capture, GUI and OS-input code live only in `automation/`.
 10. **Automation never types into given cells** and refuses to type when a read is unsure
-    (score < `MIN_SCORE`) or unsolvable. Keep the Stop / Esc / `SIGUSR1` kill switches working.
+    (score < `MIN_SCORE`) or unsolvable. Keep the Stop / Esc / F2 / `SIGUSR1` kill switches working (in the GUI, F2 and `SIGUSR1` stop while
+    working and resume a stopped fill when idle; Esc only stops).
 11. **Never trigger a real Fill (uinput) or `make auto` yourself** without asking. It moves the user's real
     mouse. Use `--image`, fixtures and `FakeDevice` tests.
 9. **Branch manager**: Before adding any futures or fix bugs, always work on a new git branch. Never commit direcly on main. Bug branches must follow naming convention bug/[des], future branches follow naming convention futures/[desc]

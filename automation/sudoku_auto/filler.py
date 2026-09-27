@@ -37,11 +37,3 @@ def fill(scan, solution, device, stopEvent, delay=0.08, progress=None):
             progress(done, len(moves))
     return len(moves)
 
-
-def mismatches(scan, solution):
-    """Cells whose value on screen differs from the solution: [(r, c, seen, expected)]."""
-    out = []
-    for i, value in enumerate(scan.cells):
-        if value != solution[i]:
-            out.append((i // 9, i % 9, value, solution[i]))
-    return out

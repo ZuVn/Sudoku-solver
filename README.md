@@ -57,6 +57,8 @@ Mã thoát: `0` thành công, `1` đề sai hoặc không có lời giải, `2` 
 `s` giải, `g` sinh đề mới, `c` xóa bảng, `q` thoát.
 
 **Cửa sổ tự động (`make auto`):** mở đề sao cho thấy toàn bộ bảng, nhấn **Scan**, kiểm tra bản xem trước,
-rồi nhấn **Fill**. Chương trình bắt đầu gõ sau 3 giây. Để dừng, nhấn **Stop**, **Esc**, hoặc chạy
-`pkill -USR1 -f sudoku_auto`. Cần quyền ghi `/dev/uinput`, chỉ hỗ trợ một màn hình, và phím số hàng trên
+rồi nhấn **Fill**. Chương trình bắt đầu gõ sau 3 giây. Nút **Stop/Resume** và phím **F2** dùng chung một chức năng:
+bấm lần đầu để dừng, bấm lần nữa để chụp lại màn hình và điền tiếp các ô còn trống. **Esc** chỉ dừng.
+Khi đang điền, focus nằm ở trình duyệt, nên F2 chỉ dùng được nếu đã gán F2 trong Settings → Keyboard →
+Custom Shortcuts cho lệnh `pkill -USR1 -f '^[^ ]*python[^ ]* -m sudoku_auto'`. Cần quyền ghi `/dev/uinput`, chỉ hỗ trợ một màn hình, và phím số hàng trên
 phải gõ ra số mà không cần Shift.

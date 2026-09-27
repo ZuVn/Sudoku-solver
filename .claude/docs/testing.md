@@ -7,7 +7,7 @@ make test        # builds first, then runs tests/run_tests.sh from the repo root
 ```
 Expected tail: `8 passed, 0 failed`. The script exits non-zero if any check fails.
 
-Automation layer: `make auto-test` (unittest, 17 tests, about 7 s). See
+Automation layer: `make auto-test` (unittest, 18 tests, about 7 s). See
 [screen_automation.md](screen_automation.md#tests-automationtests-run-with-make-auto-test).
 
 ## What is checked (`tests/run_tests.sh`)

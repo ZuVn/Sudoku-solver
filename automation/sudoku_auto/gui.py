@@ -6,7 +6,7 @@ import threading
 import time
 import tkinter as tk
 
-from . import capture, detect, filler, pipeline, uinput
+from . import capture, filler, pipeline, uinput
 
 CELL = 28
 COUNTDOWN = 3
@@ -22,6 +22,9 @@ class App:
         self.scan = None
         self.solution = None
         self.screenSize = None
+        self.paused = False     # a fill was stopped and can be resumed
+        self.busy = False
+        self.resumePending = False  # set by SIGUSR1 (F2) while idle, handled in poll()
 
         root.title("Sudoku Auto")
         root.attributes("-topmost", True)
@@ -34,11 +37,11 @@ class App:
         self.scanBtn = tk.Button(root, text="Scan", width=8, command=self.onScan)
         self.fillBtn = tk.Button(root, text="Fill", width=8, command=self.onFill,
                                  state=tk.DISABLED)
-        self.stopBtn = tk.Button(root, text="Stop", width=8, command=self.onStop,
-                                 state=tk.DISABLED)
+        self.toggleBtn = tk.Button(root, text="Stop", width=8, command=self.onToggle,
+                                   state=tk.DISABLED)
         self.scanBtn.grid(row=1, column=0, padx=4)
         self.fillBtn.grid(row=1, column=1, padx=4)
-        self.stopBtn.grid(row=1, column=2, padx=4)
+        self.toggleBtn.grid(row=1, column=2, padx=4)
 
         opts = tk.Frame(root)
         opts.grid(row=2, column=0, columnspan=3, pady=6)
@@ -47,15 +50,14 @@ class App:
         self.delay.delete(0, tk.END)
         self.delay.insert(0, "80")
         self.delay.pack(side=tk.LEFT)
-        self.verify = tk.BooleanVar(value=True)
-        tk.Checkbutton(opts, text="Verify after fill", variable=self.verify).pack(side=tk.LEFT)
 
-        self.status = tk.Label(root, text="Open the puzzle in Chrome, then press Scan.",
+        self.status = tk.Label(root, text="",
                                wraplength=CELL * 9, justify=tk.LEFT, anchor="w")
         self.status.grid(row=3, column=0, columnspan=3, sticky="we", padx=8, pady=(0, 8))
 
         root.bind("<Escape>", lambda _e: self.onStop())
-        signal.signal(signal.SIGUSR1, lambda *_: self.stopEvent.set())
+        root.bind("<F2>", lambda _e: self.onToggle())
+        signal.signal(signal.SIGUSR1, self.onSignal)
         self.drawBoard()
         self.poll()
 
@@ -88,7 +90,10 @@ class App:
     def setBusy(self, busy):
         self.scanBtn.config(state=tk.DISABLED if busy else tk.NORMAL)
         self.fillBtn.config(state=tk.DISABLED if busy or not self.solution else tk.NORMAL)
-        self.stopBtn.config(state=tk.NORMAL if busy else tk.DISABLED)
+        self.busy = busy
+        resumable = self.paused and not busy
+        self.toggleBtn.config(text="Resume" if resumable else "Stop",
+                              state=tk.NORMAL if busy or resumable else tk.DISABLED)
 
     # ---- worker plumbing ----------------------------------------------
 
@@ -96,6 +101,9 @@ class App:
         self.events.put((kind, args))
 
     def poll(self):
+        if self.resumePending:
+            self.resumePending = False
+            self.onToggle()
         try:
             while True:
                 kind, args = self.events.get_nowait()
@@ -127,7 +135,7 @@ class App:
         for s in range(COUNTDOWN, 0, -1):
             if self.stopEvent.is_set():
                 raise filler.Stopped("before %s" % verb)
-            self.post("status", "%s in %d… (Stop / Esc to cancel)" % (verb, s))
+            self.post("status", "%s in %d… (Stop / Esc / F2 to cancel)" % (verb, s))
             time.sleep(1)
 
     def grab(self):
@@ -153,6 +161,9 @@ class App:
     def on_done(self):
         self.setBusy(False)
 
+    def on_paused(self, paused):
+        self.paused = paused
+
     def on_scanned(self, scan, solution, size):
         self.scan, self.solution, self.screenSize = scan, solution, size
         self.drawBoard()
@@ -164,6 +175,7 @@ class App:
 
     def onScan(self):
         self.scan = self.solution = None
+        self.paused = False
         self.drawBoard()
         self.run(self.doScan)
 
@@ -173,42 +185,67 @@ class App:
         scan, solution = pipeline.analyse(image)
         self.post("scanned", scan, solution, image.size)
 
+    def fillDelay(self):
+        try:
+            return max(0, int(self.delay.get())) / 1000.0
+        except ValueError:
+            return 0.08
+
     def onFill(self):
         if not self.solution:
             return
-        try:
-            delay = max(0, int(self.delay.get())) / 1000.0
-        except ValueError:
-            delay = 0.08
-        verify = self.verify.get()
+        delay = self.fillDelay()
         self.moveAwayFromBoard()
-        self.run(lambda: self.doFill(delay, verify))
+        self.run(lambda: self.doFill(delay))
 
-    def doFill(self, delay, verify):
+    def doFill(self, delay):
         self.countdown("Filling")
-        w, h = self.screenSize
+        self.typeSolution(self.scan, self.screenSize, delay)
+
+    def onResume(self):
+        if not self.paused or not self.solution:
+            return
+        delay = self.fillDelay()
+        self.moveAwayFromBoard()
+        self.run(lambda: self.doResume(delay))
+
+    def doResume(self, delay):
+        self.countdown("Resuming")
+        self.post("status", "Re-reading the board…")
+        image = self.grab()
+        scan = pipeline.reanalyse(image, self.solution)
+        self.typeSolution(scan, image.size, delay)
+
+    def typeSolution(self, scan, size, delay):
+        """Type the solution into the empty cells of scan. A stop leaves the fill resumable."""
+        self.post("paused", True)
+        w, h = size
         self.post("status", "Creating virtual mouse/keyboard…")
-        with uinput.VirtualInput(w, h) as dev:
-            total = filler.fill(self.scan, self.solution, dev, self.stopEvent, delay,
-                                lambda d, t: self.post("status", "Filling %d/%d…" % (d, t)))
-        if not verify:
-            self.post("status", "Typed %d digits." % total)
-            return
-        self.post("status", "Verifying…")
-        time.sleep(0.3)
-        after = detect.scanImage(self.grab())
-        if after is None:
-            self.post("status", "Typed %d digits. Could not re-read the board to verify." % total)
-            return
-        bad = filler.mismatches(after, self.solution)
-        if bad:
-            where = ", ".join("r%dc%d" % (r + 1, c + 1) for r, c, _, _ in bad[:6])
-            self.post("status", "Typed %d digits, but %d cells differ: %s" % (total, len(bad), where))
-        else:
-            self.post("status", "Done. Board verified: all 81 cells correct.")
+        try:
+            with uinput.VirtualInput(w, h) as dev:
+                total = filler.fill(scan, self.solution, dev, self.stopEvent, delay,
+                                    lambda d, t: self.post("status", "Filling %d/%d…" % (d, t)))
+        except filler.Stopped as e:
+            raise filler.Stopped("%s. Press Resume or F2 to continue" % e)
+        self.post("paused", False)
+        self.post("status", "Typed %d digits." % total)
 
     def onStop(self):
         self.stopEvent.set()
+
+    def onToggle(self):
+        """Stop/Resume button and F2: stop while working, resume a stopped fill when idle."""
+        if self.busy:
+            self.onStop()
+        elif self.paused:
+            self.onResume()
+
+    def onSignal(self, *_):
+        """SIGUSR1 (global F2). Stopping is done here directly so it never waits on Tk."""
+        if self.busy:
+            self.stopEvent.set()
+        else:
+            self.resumePending = True
 
     def moveAwayFromBoard(self):
         """If this window covers the board, move it to the far side of the screen."""

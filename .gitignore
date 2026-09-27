@@ -1,4 +1,4 @@
-node_modules
+settings.local.json
 luong_xu_ly.txt
 .env
 .env.local

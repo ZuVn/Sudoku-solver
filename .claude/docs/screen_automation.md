@@ -22,10 +22,10 @@ because both the portal and uinput work there.
 | `detect.py` | `findGrid(gray)` → `Grid(xs[10], ys[10])`. `readCells` classifies 81 cells. `scanImage(img)` → `Scan` or `None`. |
 | `digits.py` | Template matching: `defaultTemplates()` (cached) and `classifyCell(crop)` → `(digit or 0, score)`. |
 | `solver.py` | `solve(puzzle81)` pipes into `../sudoku -f -` and parses after `Solution:`. Raises `SolveError`. |
-| `pipeline.py` | `analyse(img)` → `(scan, solution)`. It rejects a missing grid, low scores, a full board, and unsolvable reads. |
+| `pipeline.py` | `analyse(img)` → `(scan, solution)`. It rejects a missing grid, low scores, a full board, and unsolvable reads. `reanalyse(img, solution)` re-reads a partly filled board for Resume and rejects any digit that disagrees with the solution. |
 | `uinput.py` | Raw ioctl uinput: `Pointer` (ABS_X/ABS_Y range = screenshot size, BTN_LEFT), `Keyboard` (KEY_1..KEY_9), `VirtualInput` context manager with a 1 s settle time. |
-| `filler.py` | `plan` (empty cells only, row-major), `fill(..., stopEvent)`, `mismatches` for verification. |
-| `gui.py` | Tk window with Scan / Fill / Stop, preview, delay, and a verify option. Workers post to a queue that the main thread polls every 50 ms. |
+| `filler.py` | `plan` (empty cells only, row-major), `fill(..., stopEvent)`. |
+| `gui.py` | Tk window with Scan / Fill / Stop-Resume (one toggle button), preview and delay. Workers post to a queue that the main thread polls every 50 ms. |
 | `__main__.py` | `--image PNG`, `--scan`, `--fill`, `--save`, `--delay`, `--countdown`. No flag starts the GUI. |
 
 ## Grid detection (`detect.py`)
@@ -62,17 +62,25 @@ threshold. Grids drawn without lines, or drawn only with cell backgrounds, are n
 - Per cell: move → 30 ms → click → 30 ms → key → `delay` (default 80 ms). Givens are never clicked.
 - Keys are the top-row KEY_1..KEY_9. This assumes a layout where those keys produce digits without Shift
   (US or Vietnamese: yes. AZERTY: no).
+- **Resume:** a stop during typing keeps the fill resumable. Resume re-captures the screen, calls
+  `pipeline.reanalyse` (every digit on screen must match the stored solution, so a scrolled page is fine but
+  a different puzzle is refused), then types only the cells still empty, at the new grid position.
 
 ## Safety / kill switches
 
-- Tk: **Stop** button or **Esc** (when the window has focus). There is a 3 s countdown before filling.
-- Global: `SIGUSR1` sets the stop event (GUI and `--fill`). Bind a GNOME custom shortcut to
-  `pkill -USR1 -f sudoku_auto`. On Wayland this is the only global hotkey path. Reading `/dev/input` needs the
+- Tk: the **Stop/Resume** toggle and **F2** stop while busy and resume a stopped fill when idle. **Esc** only stops.
+  Tk keys work only when the window has focus, so in practice only during the countdown: the first click gives
+  focus to the browser. Mid-fill, F2 works through the global GNOME shortcut below. There is a 3 s countdown before filling.
+- Global: `SIGUSR1` sets the stop event directly in the signal handler (GUI and `--fill`). In the GUI, a
+  `SIGUSR1` while idle and paused sets `resumePending`, which `poll()` turns into a resume (CLI `--fill` has no resume). Bind a GNOME custom shortcut to
+  `pkill -USR1 -f '^[^ ]*python[^ ]* -m sudoku_auto'` (installed on the user's machine as F2, gsettings path
+  `.../custom-keybindings/sudoku-auto-stop/`). The anchored pattern matters: a bare `-f sudoku_auto` also hits
+  the `sh -c` of `make auto` or an editor with that path open, and SIGUSR1 kills those. On Wayland this is the
+  only global hotkey path. Reading `/dev/input` needs the
   `input` group, which the user does not have.
 - CLI `--fill`: Ctrl+C in the terminal.
 - The Tk window hides during each capture. Before filling, it moves away if it overlaps the board.
 - Refusal rules (nothing is typed): no grid, any cell score < 0.6, full board, duplicate or unsolvable read.
-- After filling, an optional re-scan compares the screen with the solution and reports mismatching cells.
 
 ## Tests (`automation/tests/`, run with `make auto-test`)
 

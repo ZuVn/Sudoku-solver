@@ -144,10 +144,31 @@ class Filler(unittest.TestCase):
             filler.fill(self.scan, self.solution, dev, stop, delay=0)
         self.assertEqual(dev.log, [])
 
-    def test_mismatches(self):
-        self.assertEqual(filler.mismatches(self.scan, self.solution),
-                         [(i // 9, i % 9, 0, self.solution[i])
-                          for i, ch in enumerate(EASY) if ch == "."])
+
+class Resume(unittest.TestCase):
+    def setUp(self):
+        _, self.solution = pipeline.analyse(synth.render(EASY))
+        # First 10 empty cells already typed, the rest still empty.
+        half = list(EASY)
+        for i in [i for i, ch in enumerate(EASY) if ch == "."][:10]:
+            half[i] = str(self.solution[i])
+        self.half = "".join(half)
+
+    def test_resume_types_only_remaining_cells(self):
+        scan = pipeline.reanalyse(synth.render(self.half, origin=(420, 150)), self.solution)
+        dev = FakeDevice()
+        n = filler.fill(scan, self.solution, dev, threading.Event(), delay=0)
+        self.assertEqual(n, self.half.count("."))
+        # The board moved: the first click follows the new grid position.
+        first = self.half.index(".")
+        x, y = scan.grid.cellCenter(first // 9, first % 9)
+        self.assertEqual(dev.log[0], ("move", round(x), round(y)))
+
+    def test_resume_refuses_a_different_board(self):
+        wrong = str(self.solution[2] % 9 + 1)
+        bad = self.half[:2] + wrong + self.half[3:]
+        with self.assertRaises(pipeline.PipelineError):
+            pipeline.reanalyse(synth.render(bad), self.solution)
 
 
 if __name__ == "__main__":
