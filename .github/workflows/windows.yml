@@ -22,7 +22,7 @@ jobs:
         shell: msys2 {0}
         run: |
           make CFLAGS="-Wall -Wextra -O2 -Iinclude $(pkg-config --static --cflags ncursesw)" \
-               LDLIBS="-static $(pkg-config --static --libs ncursesw)"
+               LDLIBS="-static -s -lncursesw"
           ./tests/run_tests.sh
 
       - uses: actions/setup-python@v5
