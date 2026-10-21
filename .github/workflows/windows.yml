@@ -1,0 +1,46 @@
+# Build SudokuAuto.exe (Tk app, Scan -> Fill) and sudoku.exe (C solver CLI) on Windows.
+# Download them from the run's "Artifacts" section.
+name: windows-exe
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - run: git config --global core.autocrlf false   # keep LF so bash can run tests/run_tests.sh
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          install: make mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-ncurses mingw-w64-ucrt-x86_64-pkgconf
+
+      - name: Build and test sudoku.exe (static, no DLLs needed)
+        shell: msys2 {0}
+        run: |
+          make CFLAGS="-Wall -Wextra -O2 -Iinclude $(pkg-config --static --cflags ncursesw)" \
+               LDLIBS="-static $(pkg-config --static --libs ncursesw)"
+          ./tests/run_tests.sh
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r automation/requirements.txt pyinstaller
+
+      - name: Python tests
+        working-directory: automation
+        run: python -m unittest -v
+
+      - name: Build SudokuAuto.exe
+        working-directory: automation
+        run: pyinstaller --onefile --windowed --name SudokuAuto --add-binary "../sudoku.exe;." app.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SudokuAuto-windows
+          path: |
+            automation/dist/SudokuAuto.exe
+            sudoku.exe

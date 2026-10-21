@@ -62,3 +62,27 @@ bấm lần đầu để dừng, bấm lần nữa để chụp lại màn hình
 Khi đang điền, focus nằm ở trình duyệt, nên F2 chỉ dùng được nếu đã gán F2 trong Settings → Keyboard →
 Custom Shortcuts cho lệnh `pkill -USR1 -f '^[^ ]*python[^ ]* -m sudoku_auto'`. Cần quyền ghi `/dev/uinput`, chỉ hỗ trợ một màn hình, và phím số hàng trên
 phải gõ ra số mà không cần Shift.
+
+## Chạy bằng Docker
+
+```bash
+docker build -t sudoku-solver .
+docker run --rm -i sudoku-solver ./sudoku -f - < tests/easy.txt      # giải đề
+docker run --rm -it sudoku-solver ./sudoku -g 28 -i                  # giao diện ncurses
+docker run --rm sudoku-solver make test                              # kiểm thử phần C
+docker run --rm -w /app/automation -v "$PWD/anh.png:/anh.png:ro" sudoku-solver \
+    ../.venv/bin/python -m sudoku_auto --image /anh.png              # nhận diện đề từ ảnh
+```
+
+Container không chụp màn hình và không điều khiển chuột/bàn phím được. `make auto` (Scan → Fill) vẫn phải chạy trên máy thật.
+
+## Chạy trên Windows (.exe)
+
+GitHub Actions (`.github/workflows/windows.yml`) build trên máy Windows mỗi lần push:
+mở tab **Actions** → run mới nhất → tải **SudokuAuto-windows** ở mục Artifacts. Trong đó có:
+
+- `SudokuAuto.exe`: cửa sổ Scan → Fill, chạy luôn, không cần cài Python.
+- `sudoku.exe`: bản dòng lệnh của bộ giải (`sudoku.exe -f de.txt`, `sudoku.exe -g 28`).
+
+Trên Windows, **F2** dừng/tiếp tục ở mọi cửa sổ (không cần tạo phím tắt). **Esc** chỉ dừng khi cửa sổ Sudoku Auto
+đang được chọn. Lần đầu chạy, Windows SmartScreen có thể cảnh báo vì file chưa được ký: chọn *More info → Run anyway*.

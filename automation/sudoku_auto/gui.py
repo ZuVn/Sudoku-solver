@@ -1,12 +1,18 @@
 """Small Tk control window: Scan, Fill, Stop."""
 
+import os
 import queue
 import signal
 import threading
 import time
 import tkinter as tk
 
-from . import capture, filler, pipeline, uinput
+from . import capture, filler, pipeline
+
+if os.name == "nt":
+    from . import winput as uinput
+else:
+    from . import uinput
 
 CELL = 28
 COUNTDOWN = 3
@@ -56,8 +62,11 @@ class App:
         self.status.grid(row=3, column=0, columnspan=3, sticky="we", padx=8, pady=(0, 8))
 
         root.bind("<Escape>", lambda _e: self.onStop())
-        root.bind("<F2>", lambda _e: self.onToggle())
-        signal.signal(signal.SIGUSR1, self.onSignal)
+        if os.name == "nt":
+            self.f2Held = False     # global F2 is polled in poll()
+        else:
+            root.bind("<F2>", lambda _e: self.onToggle())
+            signal.signal(signal.SIGUSR1, self.onSignal)
         self.drawBoard()
         self.poll()
 
@@ -101,6 +110,11 @@ class App:
         self.events.put((kind, args))
 
     def poll(self):
+        if os.name == "nt":
+            held = uinput.f2Down()
+            if held and not self.f2Held:
+                self.onSignal()
+            self.f2Held = held
         if self.resumePending:
             self.resumePending = False
             self.onToggle()

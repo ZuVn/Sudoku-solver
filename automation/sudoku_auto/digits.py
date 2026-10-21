@@ -32,6 +32,15 @@ FONT_FILES = (
 
 FONT_DIRS = ("/usr/share/fonts", "/usr/local/share/fonts", os.path.expanduser("~/.local/share/fonts"))
 
+if os.name == "nt":
+    FONT_FILES = (
+        "arial.ttf", "arialbd.ttf", "verdana.ttf", "verdanab.ttf",
+        "tahoma.ttf", "tahomabd.ttf", "times.ttf", "timesbd.ttf",
+        "georgia.ttf", "georgiab.ttf", "calibri.ttf", "calibrib.ttf",
+        "segoeui.ttf", "segoeuib.ttf", "trebuc.ttf", "trebucbd.ttf",
+    )
+    FONT_DIRS = (os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts"),)
+
 # Minimum contrast (gray levels) between ink and cell background.
 MIN_CONTRAST = 50
 

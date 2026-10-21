@@ -7,12 +7,18 @@
 """
 
 import argparse
+import os
 import signal
 import sys
 import threading
 import time
 
-from . import capture, filler, pipeline, uinput
+from . import capture, filler, pipeline
+
+if os.name == "nt":
+    from . import winput as uinput
+else:
+    from . import uinput
 
 
 def printBoard(cells, title):
@@ -67,7 +73,8 @@ def main(argv=None):
             return 0
 
         stop = threading.Event()
-        signal.signal(signal.SIGUSR1, lambda *_: stop.set())
+        if hasattr(signal, "SIGUSR1"):
+            signal.signal(signal.SIGUSR1, lambda *_: stop.set())
         with uinput.VirtualInput(*image.size) as dev:
             total = filler.fill(scan, solution, dev, stop, args.delay / 1000.0)
         print("Typed %d digits." % total)

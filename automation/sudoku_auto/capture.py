@@ -18,6 +18,10 @@ class CaptureError(Exception):
 
 def capture(timeout=30):
     """Return the whole screen as an RGB PIL image."""
+    if os.name == "nt":
+        from PIL import ImageGrab
+        return ImageGrab.grab().convert("RGB")
+
     import gi
     gi.require_version("Gio", "2.0")
     from gi.repository import Gio, GLib
