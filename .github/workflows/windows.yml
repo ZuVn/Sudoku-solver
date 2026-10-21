@@ -21,12 +21,7 @@ jobs:
       - name: Build and test sudoku.exe (static, no DLLs needed)
         shell: msys2 {0}
         run: |
-          echo 'int main(void){return 0;}' > /tmp/h.c
-          try() { echo "== $*"; gcc "$@" -o /tmp/t.exe && /tmp/t.exe && echo RUNS; }
-          try /tmp/h.c
-          try /tmp/h.c -static
-          try -fno-ident /tmp/h.c
-          try /tmp/h.c -Wl,--image-base=0x400000
+          make clean   # the repo tracks Linux-built obj/*.o and ./sudoku
           make CFLAGS="-Wall -Wextra -O2 -Iinclude $(pkg-config --static --cflags ncursesw)" \
                LDLIBS="-static -s -lncursesw"
           ./tests/run_tests.sh
