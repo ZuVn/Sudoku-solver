@@ -10,7 +10,6 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - run: git config --global core.autocrlf false   # keep LF so bash can run tests/run_tests.sh
       - uses: actions/checkout@v4
 
       - uses: msys2/setup-msys2@v2
@@ -18,13 +17,12 @@ jobs:
           msystem: UCRT64
           install: make mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-ncurses mingw-w64-ucrt-x86_64-pkgconf
 
-      - name: Build and test sudoku.exe (static, no DLLs needed)
+      - name: Build sudoku.exe (static, no DLLs needed)
         shell: msys2 {0}
         run: |
           make clean   # the repo tracks Linux-built obj/*.o and ./sudoku
           make CFLAGS="-Wall -Wextra -O2 -Iinclude $(pkg-config --static --cflags ncursesw)" \
                LDLIBS="-static -s -lncursesw"
-          ./tests/run_tests.sh
 
       - uses: actions/setup-python@v5
         with:

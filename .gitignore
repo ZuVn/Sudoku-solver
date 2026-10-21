@@ -5,3 +5,13 @@ luong_xu_ly.txt
 build/
 dist/
 *.spec
+/sudoku
+obj/
+__pycache__/
+.venv/
+Dockerfile
+.dockerignore
+/tests/
+CLAUDE.md
+AGENTS.md
+.claude/

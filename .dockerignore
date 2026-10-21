@@ -1,8 +1,0 @@
-.git
-.venv
-.claude
-obj
-sudoku
-**/__pycache__
-.env
-.env.local

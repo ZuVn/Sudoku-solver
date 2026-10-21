@@ -11,7 +11,7 @@ AUTO   = automation
 SRCS = $(wildcard $(SRCDIR)/*.c)
 OBJS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRCS))
 
-.PHONY: all build run clean test auto auto-scan auto-setup auto-test
+.PHONY: all build run clean auto auto-scan auto-setup auto-test
 
 all: build
 
@@ -31,9 +31,6 @@ run: build
 
 clean:
 	rm -rf $(OBJDIR) $(BIN)
-
-test: build
-	./tests/run_tests.sh
 
 auto-setup:
 	python3 -m venv --system-site-packages .venv

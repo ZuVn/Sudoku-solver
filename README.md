@@ -47,7 +47,7 @@ Hãy đặt dự án trên phân vùng Linux (ext4). Biên dịch trên ổ NTFS
 | `./sudoku -h` | Xem hướng dẫn nhanh |
 | `make auto-scan` | Chụp màn hình, nhận diện và in lời giải, không gõ gì |
 | `make auto` | Mở cửa sổ điều khiển tự động giải |
-| `make test` / `make auto-test` | Chạy kiểm thử phần C / phần Python |
+| `make auto-test` | Chạy kiểm thử phần Python |
 
 File đề gồm 81 ô đọc theo hàng. Chữ số `1`–`9` là ô có sẵn, ô trống ghi bằng `0`, `.`, `_` hoặc `*`. Các ký tự khác bị bỏ qua.
 
@@ -62,19 +62,6 @@ bấm lần đầu để dừng, bấm lần nữa để chụp lại màn hình
 Khi đang điền, focus nằm ở trình duyệt, nên F2 chỉ dùng được nếu đã gán F2 trong Settings → Keyboard →
 Custom Shortcuts cho lệnh `pkill -USR1 -f '^[^ ]*python[^ ]* -m sudoku_auto'`. Cần quyền ghi `/dev/uinput`, chỉ hỗ trợ một màn hình, và phím số hàng trên
 phải gõ ra số mà không cần Shift.
-
-## Chạy bằng Docker
-
-```bash
-docker build -t sudoku-solver .
-docker run --rm -i sudoku-solver ./sudoku -f - < tests/easy.txt      # giải đề
-docker run --rm -it sudoku-solver ./sudoku -g 28 -i                  # giao diện ncurses
-docker run --rm sudoku-solver make test                              # kiểm thử phần C
-docker run --rm -w /app/automation -v "$PWD/anh.png:/anh.png:ro" sudoku-solver \
-    ../.venv/bin/python -m sudoku_auto --image /anh.png              # nhận diện đề từ ảnh
-```
-
-Container không chụp màn hình và không điều khiển chuột/bàn phím được. `make auto` (Scan → Fill) vẫn phải chạy trên máy thật.
 
 ## Chạy trên Windows (.exe)
 
